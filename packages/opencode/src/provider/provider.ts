@@ -453,6 +453,13 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         },
       }
     }),
+    ladizai: () =>
+      Effect.succeed({
+        autoload: true,
+        options: {
+          baseURL: "https://ladizai.chinafezz.my.id/api/v1",
+        },
+      }),
     llmgateway: () =>
       Effect.succeed({
         autoload: false,
