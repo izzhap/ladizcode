@@ -540,7 +540,7 @@ function ProviderConnection(props: {
     const method = methods()[index]
     dispatch({ type: "method.select", index })
 
-    if (method.type === "oauth") {
+    if (method?.type === "oauth") {
       if (method.prompts?.length && !inputs) {
         dispatch({ type: "auth.prompt" })
         return
@@ -711,8 +711,8 @@ function ProviderConnection(props: {
     showToast({
       variant: "success",
       icon: "circle-check",
-      title: language.t("provider.connect.toast.connected.title", { provider: provider().name }),
-      description: language.t("provider.connect.toast.connected.description", { provider: provider().name }),
+      title: language.t("provider.connect.toast.connected.title", { provider: provider()?.name ?? "" }),
+      description: language.t("provider.connect.toast.connected.description", { provider: provider()?.name ?? "" }),
     })
   }
 
@@ -731,7 +731,7 @@ function ProviderConnection(props: {
       return (
         <div class="flex flex-col gap-2">
           <div class="px-3 text-[13px] font-[440] leading-5 tracking-[-0.04px] text-v2-text-text-muted">
-            {language.t("provider.connect.selectMethod", { provider: provider().name })}
+            {language.t("provider.connect.selectMethod", { provider: provider()?.name ?? "" })}
           </div>
           <div class="flex flex-col">
             <For each={methods()}>
@@ -761,7 +761,7 @@ function ProviderConnection(props: {
     return (
       <>
         <div class="text-14-regular text-text-base">
-          {language.t("provider.connect.selectMethod", { provider: provider().name })}
+          {language.t("provider.connect.selectMethod", { provider: provider()?.name ?? "" })}
         </div>
         <div>
           <List
@@ -795,6 +795,8 @@ function ProviderConnection(props: {
     const errorID = createUniqueId()
     const [formStore, setFormStore] = createStore({
       value: "",
+      password: "",
+      loading: false,
       error: undefined as string | undefined,
     })
 
@@ -806,11 +808,64 @@ function ProviderConnection(props: {
     async function handleSubmit(e: SubmitEvent) {
       e.preventDefault()
 
+      if (provider()?.id === "ladizai" || props.provider === "ladizai") {
+        const token = formStore.value.trim()
+        const password = formStore.password.trim()
+        if (!token || !password) {
+          setFormStore("error", "Token/Email dan Password wajib diisi")
+          return
+        }
+
+        setFormStore("error", undefined)
+        setFormStore("loading", true)
+        try {
+          const res = await fetch("https://ladizai.chinafezz.my.id/api/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({ token, password }),
+          })
+          const data = await res.json()
+          if (!res.ok || !data.success) {
+            setFormStore("error", data.message || "Login LadizAI Gagal")
+            setFormStore("loading", false)
+            return
+          }
+          const apiKey = data.user?.token || data.token || data.user?.api_key
+          if (!apiKey) {
+            setFormStore("error", "API Key/Token tidak ditemukan dalam respon login")
+            setFormStore("loading", false)
+            return
+          }
+
+          await serverSDK().api.integration.connect.key({
+            integrationID: props.provider,
+            location: location(),
+            key: apiKey,
+          })
+          // Simpan info user ke localStorage supaya titlebar bisa menampilkan profil
+          const username = data.user?.name || data.user?.username || data.user?.email || token
+          localStorage.setItem(
+            "ladiz_user",
+            JSON.stringify({ username, token: apiKey }),
+          )
+          // Kirim event agar titlebar langsung update tanpa polling
+          window.dispatchEvent(new CustomEvent("ladiz-login", { detail: { username } }))
+          await complete()
+        } catch (err: unknown) {
+          setFormStore("error", err instanceof Error ? err.message : "Gagal terhubung ke server LadizAI")
+          setFormStore("loading", false)
+        }
+        return
+      }
+
       const form = e.currentTarget as HTMLFormElement
       const formData = new FormData(form)
-      const apiKey = formData.get("apiKey") as string
+      const apiKeyVal = formData.get("apiKey") as string
 
-      if (!apiKey?.trim()) {
+      if (!apiKeyVal?.trim()) {
         setFormStore("error", language.t("provider.connect.apiKey.required"))
         return
       }
@@ -819,7 +874,7 @@ function ProviderConnection(props: {
       await serverSDK().api.integration.connect.key({
         integrationID: props.provider,
         location: location(),
-        key: apiKey,
+        key: apiKeyVal,
       })
       await complete()
     }
@@ -827,9 +882,21 @@ function ProviderConnection(props: {
     if (newLayout())
       return (
         <div class="flex flex-col gap-5 px-3 text-[13px] font-[440] leading-5 tracking-[-0.04px] text-v2-text-text-muted">
+          <Show when={provider()?.id === "ladizai" || props.provider === "ladizai"}>
+            <div class="flex flex-col gap-2 text-v2-text-text-base font-[530]">
+              <div>Login LadizAI Gateway</div>
+              <div class="text-[12px] font-[440] text-v2-text-text-muted">
+                Masukkan user token / email dan password akun LadizAI Anda untuk autentikasi otomatis.
+              </div>
+            </div>
+          </Show>
           <Show
-            when={provider().id === "opencode"}
-            fallback={language.t("provider.connect.apiKey.description", { provider: provider().name })}
+            when={provider()?.id === "opencode"}
+            fallback={
+              provider()?.id === "ladizai" || props.provider === "ladizai" ? null : (
+                language.t("provider.connect.apiKey.description", { provider: provider()?.name ?? "" })
+              )
+            }
           >
             <div class="flex flex-col gap-5">
               <div>{language.t("provider.connect.opencodeZen.line1")}</div>
@@ -847,22 +914,57 @@ function ProviderConnection(props: {
             </div>
           </Show>
           <form onSubmit={handleSubmit} class="flex flex-col items-start gap-5 self-stretch">
-            <label class="flex w-full flex-col gap-1 font-[530] leading-4 text-v2-text-text-base">
-              {language.t("provider.connect.apiKey.label", { provider: provider().name })}
-              <TextInputV2
-                ref={apiKey}
-                class="!w-full"
-                name="apiKey"
-                data-input="provider-api-key"
-                placeholder={language.t("provider.connect.apiKey.placeholder")}
-                value={formStore.value}
-                invalid={formStore.error !== undefined}
-                aria-describedby={formStore.error ? errorID : undefined}
-                autocomplete="off"
-                spellcheck={false}
-                onInput={(event) => setFormStore("value", event.currentTarget.value)}
-              />
-            </label>
+            <Show
+              when={provider()?.id === "ladizai" || props.provider === "ladizai"}
+              fallback={
+                <label class="flex w-full flex-col gap-1 font-[530] leading-4 text-v2-text-text-base">
+                  {language.t("provider.connect.apiKey.label", { provider: provider()?.name ?? "" })}
+                  <TextInputV2
+                    ref={apiKey}
+                    class="!w-full"
+                    name="apiKey"
+                    data-input="provider-api-key"
+                    placeholder={language.t("provider.connect.apiKey.placeholder")}
+                    value={formStore.value}
+                    invalid={formStore.error !== undefined}
+                    aria-describedby={formStore.error ? errorID : undefined}
+                    autocomplete="off"
+                    spellcheck={false}
+                    onInput={(event) => setFormStore("value", event.currentTarget.value)}
+                  />
+                </label>
+              }
+            >
+              <label class="flex w-full flex-col gap-1 font-[530] leading-4 text-v2-text-text-base">
+                Token / Email
+                <TextInputV2
+                  ref={apiKey}
+                  class="!w-full"
+                  name="token"
+                  data-input="provider-token"
+                  placeholder="Masukkan user token atau email"
+                  value={formStore.value}
+                  invalid={formStore.error !== undefined}
+                  autocomplete="off"
+                  spellcheck={false}
+                  onInput={(event) => setFormStore("value", event.currentTarget.value)}
+                />
+              </label>
+              <label class="flex w-full flex-col gap-1 font-[530] leading-4 text-v2-text-text-base">
+                Password
+                <TextInputV2
+                  class="!w-full"
+                  type="password"
+                  name="password"
+                  data-input="provider-password"
+                  placeholder="Masukkan password akun LadizAI"
+                  value={formStore.password}
+                  invalid={formStore.error !== undefined}
+                  autocomplete="current-password"
+                  onInput={(event) => setFormStore("password", event.currentTarget.value)}
+                />
+              </label>
+            </Show>
             <Show when={formStore.error}>
               {(error) => (
                 <div id={errorID} role="alert" class="-mt-4 text-xs text-v2-state-fg-danger">
@@ -870,8 +972,8 @@ function ProviderConnection(props: {
                 </div>
               )}
             </Show>
-            <ButtonV2 type="submit" variant="contrast" data-action="provider-connect-submit">
-              {language.t("common.continue")}
+            <ButtonV2 type="submit" variant="contrast" data-action="provider-connect-submit" disabled={formStore.loading}>
+              {formStore.loading ? "Logging in..." : language.t("common.continue")}
             </ButtonV2>
           </form>
         </div>
@@ -880,7 +982,12 @@ function ProviderConnection(props: {
     return (
       <div class="flex flex-col gap-6">
         <Switch>
-          <Match when={provider().id === "opencode"}>
+          <Match when={provider()?.id === "ladizai" || props.provider === "ladizai"}>
+            <div class="text-14-regular text-text-base">
+              Masukkan Username / Token dan Password akun LadizAI Anda untuk login.
+            </div>
+          </Match>
+          <Match when={provider()?.id === "opencode"}>
             <div class="flex flex-col gap-4">
               <div class="text-14-regular text-text-base">{language.t("provider.connect.opencodeZen.line1")}</div>
               <div class="text-14-regular text-text-base">{language.t("provider.connect.opencodeZen.line2")}</div>
@@ -895,25 +1002,51 @@ function ProviderConnection(props: {
           </Match>
           <Match when={true}>
             <div class="text-14-regular text-text-base">
-              {language.t("provider.connect.apiKey.description", { provider: provider().name })}
+              {language.t("provider.connect.apiKey.description", { provider: provider()?.name ?? "" })}
             </div>
           </Match>
         </Switch>
-        <form onSubmit={handleSubmit} class="flex flex-col items-start gap-4">
-          <TextField
-            autofocus={!newLayout()}
-            ref={apiKey}
-            type="text"
-            label={language.t("provider.connect.apiKey.label", { provider: provider().name })}
-            placeholder={language.t("provider.connect.apiKey.placeholder")}
-            name="apiKey"
-            value={formStore.value}
-            onChange={(v) => setFormStore("value", v)}
-            validationState={formStore.error ? "invalid" : undefined}
-            error={formStore.error}
-          />
-          <Button class="w-auto" type="submit" size="large" variant="primary">
-            {language.t("common.continue")}
+        <form onSubmit={handleSubmit} class="flex flex-col items-start gap-4 w-full">
+          <Show
+            when={provider()?.id === "ladizai" || props.provider === "ladizai"}
+            fallback={
+              <TextField
+                autofocus={!newLayout()}
+                ref={apiKey}
+                type="text"
+                label={language.t("provider.connect.apiKey.label", { provider: provider()?.name ?? "" })}
+                placeholder={language.t("provider.connect.apiKey.placeholder")}
+                name="apiKey"
+                value={formStore.value}
+                onChange={(v) => setFormStore("value", v)}
+                validationState={formStore.error ? "invalid" : undefined}
+                error={formStore.error}
+              />
+            }
+          >
+            <TextField
+              autofocus={!newLayout()}
+              ref={apiKey}
+              type="text"
+              label="Username / Token"
+              placeholder="Masukkan Username atau Token"
+              name="token"
+              value={formStore.value}
+              onChange={(v) => setFormStore("value", v)}
+            />
+            <TextField
+              type="password"
+              label="Password"
+              placeholder="Masukkan Password"
+              name="password"
+              value={formStore.password}
+              onChange={(v) => setFormStore("password", v)}
+              validationState={formStore.error ? "invalid" : undefined}
+              error={formStore.error}
+            />
+          </Show>
+          <Button class="w-auto" type="submit" size="large" variant="primary" disabled={formStore.loading}>
+            {formStore.loading ? "Logging in..." : language.t("common.continue")}
           </Button>
         </form>
       </div>
@@ -970,7 +1103,7 @@ function ProviderConnection(props: {
             <Link href={store.authorization!.url} class="text-v2-text-text-base">
               {language.t("provider.connect.oauth.code.visit.link")}
             </Link>
-            {language.t("provider.connect.oauth.code.visit.suffix", { provider: provider().name })}
+            {language.t("provider.connect.oauth.code.visit.suffix", { provider: provider()?.name ?? "" })}
           </div>
           <form onSubmit={handleSubmit} class="flex flex-col items-start gap-5 self-stretch">
             <label class="flex w-full flex-col gap-1 font-[530] leading-4 text-v2-text-text-base">
@@ -1007,7 +1140,7 @@ function ProviderConnection(props: {
         <div class="text-14-regular text-text-base">
           {language.t("provider.connect.oauth.code.visit.prefix")}
           <Link href={store.authorization!.url}>{language.t("provider.connect.oauth.code.visit.link")}</Link>
-          {language.t("provider.connect.oauth.code.visit.suffix", { provider: provider().name })}
+          {language.t("provider.connect.oauth.code.visit.suffix", { provider: provider()?.name ?? "" })}
         </div>
         <form onSubmit={handleSubmit} class="flex flex-col items-start gap-4">
           <TextField
@@ -1078,7 +1211,7 @@ function ProviderConnection(props: {
         <div class="text-14-regular text-text-base">
           {language.t("provider.connect.oauth.auto.visit.prefix")}
           <Link href={store.authorization!.url}>{language.t("provider.connect.oauth.auto.visit.link")}</Link>
-          {language.t("provider.connect.oauth.auto.visit.suffix", { provider: provider().name })}
+          {language.t("provider.connect.oauth.auto.visit.suffix", { provider: provider()?.name ?? "" })}
         </div>
         <TextField
           label={language.t("provider.connect.oauth.auto.confirmationCode")}
@@ -1113,7 +1246,7 @@ function ProviderConnection(props: {
             <Match when={props.provider === "anthropic" && method()?.label?.toLowerCase().includes("max")}>
               {language.t("provider.connect.title.anthropicProMax")}
             </Match>
-            <Match when={true}>{language.t("provider.connect.title", { provider: provider().name })}</Match>
+            <Match when={true}>{language.t("provider.connect.title", { provider: provider()?.name ?? "" })}</Match>
           </Switch>
         </div>
       </div>

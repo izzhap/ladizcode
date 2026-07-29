@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createResource, createSignal, Match, onMount, Show, Switch, untrack } from "solid-js"
+import { createEffect, createMemo, createResource, createSignal, Match, onCleanup, onMount, Show, Switch, untrack } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useLocation, useNavigate, useParams } from "@solidjs/router"
 import { IconButton } from "@opencode-ai/ui/icon-button"
@@ -10,6 +10,7 @@ import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
 import { KeybindV2 } from "@opencode-ai/ui/v2/keybind-v2"
 import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 
+import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { LayoutRoute, useLayout } from "@/context/layout"
 import { usePlatform } from "@/context/platform"
 import { useCommand } from "@/context/command"
@@ -567,7 +568,9 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
               }}
               data-tauri-drag-region
             >
-              <div id="opencode-titlebar-right" class="flex items-center gap-1 shrink-0 justify-end" />
+              <div id="opencode-titlebar-right" class="flex items-center gap-1 shrink-0 justify-end">
+                <LadizAuthButton />
+              </div>
               <Show when={windows()}>
                 <div class="shrink-0" style={{ width: windowsControlsWidth() }} />
               </Show>
@@ -594,12 +597,105 @@ type TitlebarV2RightState = {
 
 function TitlebarV2Right(props: { state: TitlebarV2RightState }) {
   return (
-    <div class="relative z-20 flex shrink-0 items-center justify-end gap-0 overflow-visible">
+    <div class="relative z-20 flex shrink-0 items-center justify-end gap-1 overflow-visible">
       <Show when={props.state.update.visible}>
         <TitlebarUpdateIconButton state={props.state.update} />
       </Show>
-      <div id="opencode-titlebar-right" class="flex shrink-0 items-center justify-end gap-0" />
+      <div id="opencode-titlebar-right" class="flex shrink-0 items-center justify-end gap-1">
+        <LadizAuthButton />
+      </div>
     </div>
+  )
+}
+
+function LadizAuthButton() {
+  const dialog = useDialog()
+  const params = useParams()
+
+  // Baca status login dari localStorage secara reaktif
+  const readLadizUser = () => {
+    try {
+      const raw = localStorage.getItem("ladiz_user")
+      if (!raw) return null
+      return JSON.parse(raw) as { username: string; token: string }
+    } catch {
+      return null
+    }
+  }
+
+  const [ladizUser, setLadizUser] = createSignal(readLadizUser())
+
+  // Update state saat storage berubah (cross-tab) atau login event diterima (same-tab)
+  const handleUpdate = () => setLadizUser(readLadizUser())
+  window.addEventListener("storage", handleUpdate)
+  window.addEventListener("ladiz-login", handleUpdate)
+  onCleanup(() => {
+    window.removeEventListener("storage", handleUpdate)
+    window.removeEventListener("ladiz-login", handleUpdate)
+  })
+
+  const openLadizLogin = () => {
+    void import("./dialog-connect-provider").then((mod) => {
+      dialog.show(() => {
+        const controller = mod.useProviderConnectController()
+        controller.select("ladizai")
+        return <mod.DialogConnectProvider directory={() => params.dir} controller={controller} />
+      })
+    })
+  }
+
+  const logout = () => {
+    localStorage.removeItem("ladiz_user")
+    setLadizUser(null)
+  }
+
+  return (
+    <Show
+      when={ladizUser()}
+      fallback={
+        <button
+          type="button"
+          class="flex items-center gap-1.5 px-2 py-0.5 text-[12px] font-[530] text-v2-text-text-base bg-v2-background-bg-hover hover:bg-v2-background-bg-active border border-v2-border-border-base rounded-md transition-colors cursor-pointer"
+          onClick={openLadizLogin}
+          aria-label="Login LadizAI"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+            <polyline points="10 17 15 12 10 7" />
+            <line x1="15" y1="12" x2="3" y2="12" />
+          </svg>
+          <span>Login LadizAI</span>
+        </button>
+      }
+    >
+      {(user) => (
+        <div class="flex items-center gap-1">
+          <div
+            class="flex items-center gap-1.5 px-2 py-0.5 text-[12px] font-[530] text-v2-text-text-base bg-v2-background-bg-hover border border-v2-border-border-base rounded-md"
+            aria-label={`Logged in as ${user().username}`}
+          >
+            {/* Avatar lingkaran dengan inisial */}
+            <span class="flex items-center justify-center w-4 h-4 rounded-full bg-v2-icon-icon-accent text-white text-[9px] font-bold shrink-0">
+              {user().username.charAt(0).toUpperCase()}
+            </span>
+            <span class="max-w-[80px] truncate">{user().username}</span>
+          </div>
+          <button
+            type="button"
+            class="flex items-center justify-center w-5 h-5 text-v2-text-text-muted hover:text-v2-text-text-base bg-transparent hover:bg-v2-background-bg-active border border-transparent hover:border-v2-border-border-base rounded transition-colors cursor-pointer"
+            onClick={logout}
+            title="Logout LadizAI"
+            aria-label="Logout LadizAI"
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
+        </div>
+      )}
+    </Show>
   )
 }
 
