@@ -96,7 +96,12 @@
   },
   "devDependencies": {
     "@actions/artifact": "5.0.1",
+    "@electron/get": "^5.0.0",
+    "@jridgewell/sourcemap-codec": "^1.4.15",
+    "@modelcontextprotocol/sdk": "1.29.0",
     "@tsconfig/bun": "catalog:",
+    "electron": "42.3.3",
+    "extract-zip": "^2.0.1",
     "@types/mime-types": "3.0.1",
     "@typescript/native-preview": "catalog:",
     "glob": "13.0.5",

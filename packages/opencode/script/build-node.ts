@@ -18,7 +18,8 @@ await Bun.build({
   outdir: "./dist/node",
   format: "esm",
   sourcemap: "linked",
-  external: ["jsonc-parser", "@lydell/node-pty"],
+  conditions: ["@zod/source", "import", "default"],
+  external: ["jsonc-parser", "@lydell/node-pty", "zod", "zod/v3", "zod/v4", "zod/v4-mini"],
   define: {
     OPENCODE_MODELS_DEV: generated.modelsData,
     OPENCODE_CHANNEL: `'${Script.channel}'`,
