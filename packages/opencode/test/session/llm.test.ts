@@ -553,6 +553,91 @@ describe("session.llm.ai-sdk adapter", () => {
     if (events[1].type !== "step-finish") throw new Error("expected step-finish")
     expect(events[1].providerMetadata?.copilot).toBeUndefined()
   })
+
+  test("captures Ladiz AI credits from raw _usage chunks per step", async () => {
+    const events = await adapt([
+      uncheckedAdapterEvent({
+        type: "raw",
+        rawValue: {
+          id: "chatcmpl-123",
+          model: "kimi-k2.6",
+          _usage: {
+            credits_deducted: 2,
+            remaining_credits: 98,
+          },
+        },
+      }),
+      {
+        type: "finish-step",
+        response: { id: "msg_ladiz", timestamp: new Date(0), modelId: "ladiz-swift" },
+        finishReason: "stop",
+        rawFinishReason: "stop",
+        usage: {
+          inputTokens: 10,
+          outputTokens: 20,
+          totalTokens: 30,
+          inputTokenDetails: { noCacheTokens: 10, cacheReadTokens: 0, cacheWriteTokens: 0 },
+          outputTokenDetails: { textTokens: 20, reasoningTokens: undefined },
+        },
+        providerMetadata: undefined,
+      },
+    ])
+
+    expect(events[0]).toMatchObject({
+      type: "step-finish",
+      providerMetadata: {
+        ladizai: {
+          creditsDeducted: 2,
+          remainingCredits: 98,
+        },
+      },
+    })
+  })
+
+  test("captures Ladiz AI credits from root-level properties in raw chunk", async () => {
+    const events = await adapt([
+      uncheckedAdapterEvent({
+        type: "raw",
+        rawValue: {
+          id: "usage-66c3f1b",
+          model: "ladiz-ai-core",
+          provider: "kimi",
+          choices: [],
+          usage: {
+            prompt_tokens: 15,
+            completion_tokens: 80,
+            total_tokens: 95,
+          },
+          credits_deducted: 1,
+          remaining_credits: 499,
+        },
+      }),
+      {
+        type: "finish-step",
+        response: { id: "msg_ladiz", timestamp: new Date(0), modelId: "ladiz-core" },
+        finishReason: "stop",
+        rawFinishReason: "stop",
+        usage: {
+          inputTokens: 15,
+          outputTokens: 80,
+          totalTokens: 95,
+          inputTokenDetails: { noCacheTokens: 15, cacheReadTokens: 0, cacheWriteTokens: 0 },
+          outputTokenDetails: { textTokens: 80, reasoningTokens: undefined },
+        },
+        providerMetadata: undefined,
+      },
+    ])
+
+    expect(events[0]).toMatchObject({
+      type: "step-finish",
+      providerMetadata: {
+        ladizai: {
+          creditsDeducted: 1,
+          remainingCredits: 499,
+        },
+      },
+    })
+  })
 })
 
 type Capture = {

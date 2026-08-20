@@ -7,8 +7,12 @@ const dir = path.resolve(__dirname, "..")
 
 process.chdir(dir)
 
-const modelsUrl = process.env.OPENCODE_MODELS_URL || "https://models.dev"
+import { LADIZAI_CATALOG } from "@opencode-ai/core/models-dev"
+
+const modelsUrl = process.env.OPENCODE_MODELS_URL
 export const modelsData = process.env.MODELS_DEV_API_JSON
   ? await Bun.file(process.env.MODELS_DEV_API_JSON).text()
-  : await fetch(`${modelsUrl}/api.json`).then((x) => x.text())
-console.log("Loaded models.dev snapshot")
+  : modelsUrl
+    ? await fetch(`${modelsUrl}/api.json`).then((x) => x.text())
+    : JSON.stringify(LADIZAI_CATALOG)
+console.log("Loaded Ladiz AI models snapshot")

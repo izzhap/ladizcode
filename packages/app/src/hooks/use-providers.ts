@@ -7,14 +7,6 @@ import { selectProviderCatalog } from "./provider-catalog"
 
 export const popularProviders = [
   "ladizai",
-  "opencode",
-  "opencode-go",
-  "anthropic",
-  "github-copilot",
-  "openai",
-  "google",
-  "openrouter",
-  "vercel",
 ]
 const popularProviderSet = new Set(popularProviders)
 

@@ -15,6 +15,7 @@ export function adapterState() {
     currentReasoningID: undefined as string | undefined,
     toolNames: {} as Record<string, string>,
     copilotTotalNanoAiu: undefined as number | undefined,
+    ladizCredits: undefined as { creditsDeducted: number; remainingCredits: number } | undefined,
   }
 }
 
@@ -39,6 +40,47 @@ function copilotTotalNanoAiu(value: unknown) {
   const total = (usage as Record<string, unknown>).total_nano_aiu
   if (typeof total !== "number" || !Number.isFinite(total) || total < 0) return
   return total
+}
+
+function ladizUsage(value: unknown) {
+  if (!value || typeof value !== "object") return
+  const raw = value as Record<string, unknown>
+  const response =
+    raw.response && typeof raw.response === "object" ? (raw.response as Record<string, unknown>) : undefined
+  const usage = (raw._usage ?? response?._usage ?? raw.usage ?? response?.usage) as Record<string, unknown> | undefined
+
+  const deducted =
+    raw.credits_deducted ??
+    raw.creditsDeducted ??
+    raw.credits_used ??
+    raw.creditsUsed ??
+    raw.deducted ??
+    response?.credits_deducted ??
+    response?.creditsDeducted ??
+    usage?.credits_deducted ??
+    usage?.creditsDeducted ??
+    usage?.credits_used ??
+    usage?.creditsUsed ??
+    usage?.deducted
+
+  const remaining =
+    raw.remaining_credits ??
+    raw.remainingCredits ??
+    raw.remaining ??
+    response?.remaining_credits ??
+    response?.remainingCredits ??
+    usage?.remaining_credits ??
+    usage?.remainingCredits ??
+    usage?.remaining
+
+  const numDeducted = typeof deducted === "number" && Number.isFinite(deducted) ? deducted : undefined
+  const numRemaining = typeof remaining === "number" && Number.isFinite(remaining) ? remaining : undefined
+
+  if (numDeducted === undefined && numRemaining === undefined) return
+  return {
+    creditsDeducted: numDeducted ?? 0,
+    remainingCredits: numRemaining ?? 0,
+  }
 }
 
 function usage(value: unknown) {
@@ -87,7 +129,7 @@ export function toLLMEvents(
     case "finish-step":
       return Effect.sync(() => {
         const original = providerMetadata(event.providerMetadata)
-        const metadata =
+        let metadata =
           state.copilotTotalNanoAiu === undefined
             ? original
             : {
@@ -98,6 +140,16 @@ export function toLLMEvents(
                 },
               }
         state.copilotTotalNanoAiu = undefined
+        if (state.ladizCredits !== undefined) {
+          metadata = {
+            ...metadata,
+            ladizai: {
+              ...metadata?.ladizai,
+              creditsDeducted: state.ladizCredits.creditsDeducted,
+              remainingCredits: state.ladizCredits.remainingCredits,
+            },
+          }
+        }
         return [
           LLMEvent.stepFinish({
             index: state.step++,
@@ -110,11 +162,23 @@ export function toLLMEvents(
 
     case "finish":
       return Effect.sync(() => {
+        const original = "providerMetadata" in event ? providerMetadata(event.providerMetadata) : undefined
+        const metadata =
+          state.ladizCredits === undefined
+            ? original
+            : {
+                ...original,
+                ladizai: {
+                  ...original?.ladizai,
+                  creditsDeducted: state.ladizCredits.creditsDeducted,
+                  remainingCredits: state.ladizCredits.remainingCredits,
+                },
+              }
         const events = [
           LLMEvent.finish({
             reason: finishReason(event.finishReason),
             usage: usage(event.totalUsage),
-            providerMetadata: "providerMetadata" in event ? providerMetadata(event.providerMetadata) : undefined,
+            providerMetadata: metadata,
           }),
         ]
         // Reset so the adapter can be reused for a follow-up stream without leaking
@@ -274,6 +338,7 @@ export function toLLMEvents(
     case "raw":
       return Effect.sync(() => {
         state.copilotTotalNanoAiu = copilotTotalNanoAiu(event.rawValue) ?? state.copilotTotalNanoAiu
+        state.ladizCredits = ladizUsage(event.rawValue) ?? state.ladizCredits
         return []
       })
 

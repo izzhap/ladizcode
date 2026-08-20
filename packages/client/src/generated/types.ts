@@ -662,6 +662,7 @@ export type SessionsContextOutput = {
           readonly reasoning: number
           readonly cache: { readonly read: number; readonly write: number }
         }
+        readonly credits?: { readonly deducted: number; readonly remaining: number }
         readonly error?: { readonly type: "unknown"; readonly message: string }
       }
     | {
@@ -1740,6 +1741,7 @@ export type SessionsMessageOutput = {
           readonly reasoning: number
           readonly cache: { readonly read: number; readonly write: number }
         }
+        readonly credits?: { readonly deducted: number; readonly remaining: number }
         readonly error?: { readonly type: "unknown"; readonly message: string }
       }
     | {
@@ -1912,6 +1914,7 @@ export type MessagesListOutput = {
           readonly reasoning: number
           readonly cache: { readonly read: number; readonly write: number }
         }
+        readonly credits?: { readonly deducted: number; readonly remaining: number }
         readonly error?: { readonly type: "unknown"; readonly message: string }
       }
     | {

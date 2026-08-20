@@ -181,6 +181,10 @@ export const Assistant = Schema.Struct({
     reasoning: Schema.Finite,
     cache: Schema.Struct({ read: Schema.Finite, write: Schema.Finite }),
   }).pipe(optional),
+  credits: Schema.Struct({
+    deducted: Schema.Finite,
+    remaining: Schema.Finite,
+  }).pipe(optional),
   error: UnknownError.pipe(optional),
   time: Schema.Struct({
     created: DateTimeUtcFromMillis,

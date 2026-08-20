@@ -3,10 +3,10 @@ import { Schema } from "effect"
 import { logo as glyphs } from "./logo"
 
 const wordmark = [
-  `⠀                                ▄     `,
-  `█▀▀█ █▀▀█ █▀▀█ █▀▀▄ █▀▀▀ █▀▀█ █▀▀█ █▀▀█`,
-  `█  █ █  █ █▀▀▀ █  █ █    █  █ █  █ █▀▀▀`,
-  `▀▀▀▀ █▀▀▀ ▀▀▀▀ ▀  ▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀`,
+  `█      ▄▄▄   █▀▀▄  ▄  ▀▀▀█   █▀▀▀  ▄▀▀▄  █▀▀▄  █▀▀▀`,
+  `█     █▀▀█   █  █  █   ▄█▀   █    █    █ █  █  █▀▀▀`,
+  `█     █^^█   █__█  █  █___   █___ █____█ █__█  █___`,
+  `▀▀▀▀  ▀  ▀   ▀▀▀▀  ▀  ▀▀▀▀   ▀▀▀▀  ▀▀▀▀  ▀▀▀▀  ▀▀▀▀`,
 ]
 
 export class CancelledError extends Schema.TaggedErrorClass<CancelledError>()("UICancelledError", {}) {}
@@ -18,14 +18,14 @@ export const Style = {
   TEXT_DIM_BOLD: "\x1b[90m\x1b[1m",
   TEXT_NORMAL: "\x1b[0m",
   TEXT_NORMAL_BOLD: "\x1b[1m",
-  TEXT_WARNING: "\x1b[93m",
-  TEXT_WARNING_BOLD: "\x1b[93m\x1b[1m",
-  TEXT_DANGER: "\x1b[91m",
-  TEXT_DANGER_BOLD: "\x1b[91m\x1b[1m",
-  TEXT_SUCCESS: "\x1b[92m",
-  TEXT_SUCCESS_BOLD: "\x1b[92m\x1b[1m",
-  TEXT_INFO: "\x1b[94m",
-  TEXT_INFO_BOLD: "\x1b[94m\x1b[1m",
+  TEXT_WARNING: "\x1b[38;2;249;115;22m",
+  TEXT_WARNING_BOLD: "\x1b[38;2;249;115;22m\x1b[1m",
+  TEXT_DANGER: "\x1b[38;2;244;63;94m",
+  TEXT_DANGER_BOLD: "\x1b[38;2;244;63;94m\x1b[1m",
+  TEXT_SUCCESS: "\x1b[38;2;16;185;129m",
+  TEXT_SUCCESS_BOLD: "\x1b[38;2;16;185;129m\x1b[1m",
+  TEXT_INFO: "\x1b[38;2;56;189;248m",
+  TEXT_INFO_BOLD: "\x1b[38;2;56;189;248m\x1b[1m",
 }
 
 export function println(...message: string[]) {
@@ -59,16 +59,16 @@ export function logo(pad?: string) {
   const result: string[] = []
   const reset = "\x1b[0m"
   const left = {
-    fg: "\x1b[90m",
-    shadow: "\x1b[38;5;235m",
-    bg: "\x1b[48;5;235m",
+    fg: "\x1b[38;2;56;189;248m\x1b[1m",
+    shadow: "\x1b[38;2;14;50;80m",
+    bg: "\x1b[48;2;14;50;80m",
   }
   const right = {
-    fg: reset,
-    shadow: "\x1b[38;5;238m",
-    bg: "\x1b[48;5;238m",
+    fg: "\x1b[38;2;248;250;252m\x1b[1m",
+    shadow: "\x1b[38;2;30;41;59m",
+    bg: "\x1b[48;2;30;41;59m",
   }
-  const gap = " "
+  const gap = "   "
   const draw = (line: string, fg: string, shadow: string, bg: string) => {
     const parts: string[] = []
     for (const char of line) {

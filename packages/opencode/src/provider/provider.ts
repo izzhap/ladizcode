@@ -455,7 +455,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
     }),
     ladizai: () =>
       Effect.succeed({
-        autoload: true,
+        autoload: false,
         options: {
           baseURL: "https://ladizai.chinafezz.my.id/api/v1",
         },
@@ -1985,8 +1985,16 @@ const layer = Layer.effect(
   }),
 )
 
-const priority = ["gpt-5", "claude-sonnet-4", "big-pickle", "gemini-3-pro"]
-const smallModelFamilyPriority = ["gemini-flash", "gpt-nano", "claude-haiku"]
+const priority = [
+  "gemini-3-pro",
+  "big-pickle",
+  "gpt-5",
+  "claude-sonnet-4",
+  "ladiz-swift",
+  "ladiz-apex",
+  "ladiz-core",
+]
+const smallModelFamilyPriority = ["ladiz-swift", "ladiz-core", "ladiz-apex", "gemini-flash", "gpt-nano", "claude-haiku"]
 export function sort<T extends { id: string }>(models: T[]) {
   return sortBy(
     models,

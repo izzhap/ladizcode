@@ -153,9 +153,17 @@ const OpenAIChatChoice = Schema.Struct({
   finish_reason: optionalNull(Schema.String),
 })
 
+const OpenAIChatLadizUsage = Schema.Struct({
+  credits_deducted: optionalNull(Schema.Number),
+  remaining_credits: optionalNull(Schema.Number),
+})
+
 const OpenAIChatEvent = Schema.Struct({
   choices: Schema.Array(OpenAIChatChoice),
   usage: optionalNull(OpenAIChatUsage),
+  _usage: optionalNull(OpenAIChatLadizUsage),
+  credits_deducted: optionalNull(Schema.Number),
+  remaining_credits: optionalNull(Schema.Number),
 })
 type OpenAIChatEvent = Schema.Schema.Type<typeof OpenAIChatEvent>
 type OpenAIChatRequestMessage = LLMRequest["messages"][number]
@@ -387,27 +395,43 @@ const mapFinishReason = (reason: string | null | undefined): FinishReason => {
 // `cached_tokens` subset, and `completion_tokens` (inclusive total) with
 // a `reasoning_tokens` subset. We pass the inclusive totals through and
 // derive the non-cached breakdown so the `LLM.Usage` contract is
-// satisfied on both sides.
-const mapUsage = (usage: OpenAIChatEvent["usage"]): Usage | undefined => {
-  if (!usage) return undefined
-  const cached = usage.prompt_tokens_details?.cached_tokens
-  const reasoning = usage.completion_tokens_details?.reasoning_tokens
-  const nonCached = ProviderShared.subtractTokens(usage.prompt_tokens, cached)
+const mapUsage = (
+  usage: OpenAIChatEvent["usage"],
+  ladizUsage?: OpenAIChatEvent["_usage"],
+  rootCreditsDeducted?: number | null,
+  rootRemainingCredits?: number | null,
+): Usage | undefined => {
+  const deducted = ladizUsage?.credits_deducted ?? rootCreditsDeducted ?? undefined
+  const remaining = ladizUsage?.remaining_credits ?? rootRemainingCredits ?? undefined
+  if (!usage && deducted === undefined && remaining === undefined) return undefined
+  const cached = usage?.prompt_tokens_details?.cached_tokens
+  const reasoning = usage?.completion_tokens_details?.reasoning_tokens
+  const nonCached = usage ? ProviderShared.subtractTokens(usage.prompt_tokens, cached) : undefined
+  const ladizMetadata =
+    deducted !== undefined || remaining !== undefined
+      ? {
+          creditsDeducted: deducted ?? 0,
+          remainingCredits: remaining ?? 0,
+        }
+      : undefined
   return new Usage({
-    inputTokens: usage.prompt_tokens,
-    outputTokens: usage.completion_tokens,
+    inputTokens: usage?.prompt_tokens,
+    outputTokens: usage?.completion_tokens,
     nonCachedInputTokens: nonCached,
     cacheReadInputTokens: cached,
     reasoningTokens: reasoning,
-    totalTokens: ProviderShared.totalTokens(usage.prompt_tokens, usage.completion_tokens, usage.total_tokens),
-    providerMetadata: { openai: usage },
+    totalTokens: usage ? ProviderShared.totalTokens(usage.prompt_tokens, usage.completion_tokens, usage.total_tokens) : undefined,
+    providerMetadata: {
+      ...(usage ? { openai: usage } : {}),
+      ...(ladizMetadata ? { ladizai: ladizMetadata } : {}),
+    },
   })
 }
 
 const step = (state: ParserState, event: OpenAIChatEvent) =>
   Effect.gen(function* () {
     const events: LLMEvent[] = []
-    const usage = mapUsage(event.usage) ?? state.usage
+    const usage = mapUsage(event.usage, event._usage, event.credits_deducted, event.remaining_credits) ?? state.usage
     const choice = event.choices[0]
     const finishReason = choice?.finish_reason ? mapFinishReason(choice.finish_reason) : state.finishReason
     const delta = choice?.delta

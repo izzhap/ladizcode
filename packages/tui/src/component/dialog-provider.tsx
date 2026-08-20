@@ -17,12 +17,7 @@ import { useBindings } from "../keymap"
 import { useClipboard } from "../context/clipboard"
 
 const PROVIDER_PRIORITY: Record<string, number> = {
-  opencode: 0,
-  "opencode-go": 1,
-  openai: 2,
-  "github-copilot": 3,
-  anthropic: 4,
-  google: 5,
+  ladizai: 0,
 }
 
 const CUSTOM_PROVIDER_OPTION_VALUE = "__opencode_custom_provider__"
@@ -59,6 +54,7 @@ export function providerOptions(list: { id: string; name: string }[]): ProviderO
         value: provider.id,
         providerID: provider.id,
         description: {
+          ladizai: "(API key - Recommended)",
           opencode: "(Recommended)",
           anthropic: "(API key)",
           openai: "(ChatGPT Plus/Pro or API key)",
@@ -368,6 +364,16 @@ function ApiMethod(props: ApiMethodProps) {
       placeholder="API key"
       description={() =>
         ({
+          ladizai: (
+            <box gap={1}>
+              <text fg={theme.textMuted}>
+                Enter your Ladiz AI API key to access ladiz-swift, ladiz-core, and ladiz-apex models.
+              </text>
+              <text fg={theme.text}>
+                Base URL: <span style={{ fg: theme.primary }}>https://ladizai.chinafezz.my.id/api/v1</span>
+              </text>
+            </box>
+          ),
           opencode: (
             <box gap={1}>
               <text fg={theme.textMuted}>

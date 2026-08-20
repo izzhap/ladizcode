@@ -368,6 +368,10 @@ export type AssistantMessage = {
       write: number
     }
   }
+  credits?: {
+    deducted: number
+    remaining: number
+  }
   structured?: unknown
   variant?: string
   finish?: string
@@ -569,6 +573,10 @@ export type StepFinishPart = {
       read: number
       write: number
     }
+  }
+  credits?: {
+    deducted: number
+    remaining: number
   }
 }
 
@@ -4130,6 +4138,10 @@ export type SessionMessageAssistant = {
       read: number
       write: number
     }
+  }
+  credits?: {
+    deducted: number
+    remaining: number
   }
   error?: SessionErrorUnknown
 }

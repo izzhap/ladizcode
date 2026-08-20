@@ -387,6 +387,14 @@ export const getUsage = (input: { model: Provider.Model; usage: Usage; metadata?
       ? input.model.cost.experimentalOver200K
       : input.model.cost)
   const totalNanoAiu = input.metadata?.["copilot"]?.["totalNanoAiu"]
+  const ladizMetadata = input.metadata?.["ladizai"] ?? input.metadata?.["ladiz"]
+  const credits =
+    ladizMetadata && typeof ladizMetadata === "object"
+      ? {
+          deducted: safe(Number(ladizMetadata["creditsDeducted"] ?? ladizMetadata["credits_deducted"] ?? 0)),
+          remaining: safe(Number(ladizMetadata["remainingCredits"] ?? ladizMetadata["remaining_credits"] ?? 0)),
+        }
+      : undefined
   return {
     cost:
       typeof totalNanoAiu === "number" && Number.isFinite(totalNanoAiu) && totalNanoAiu >= 0
@@ -403,6 +411,7 @@ export const getUsage = (input: { model: Provider.Model; usage: Usage; metadata?
               .toNumber(),
           ),
     tokens,
+    credits,
   }
 }
 

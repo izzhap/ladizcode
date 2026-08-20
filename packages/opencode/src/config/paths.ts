@@ -13,8 +13,12 @@ export const files = Effect.fn("ConfigPaths.projectFiles")(function* (
   worktree?: string,
 ) {
   const afs = yield* FSUtil.Service
+  const extraTargets =
+    name === "opencode" || name === "ladizcode"
+      ? ["ladizcode.jsonc", "ladizcode.json"]
+      : [`${name}.jsonc`, `${name}.json`]
   return (yield* afs.up({
-    targets: [`${name}.jsonc`, `${name}.json`],
+    targets: extraTargets,
     start: directory,
     stop: worktree,
   })).toReversed()
@@ -26,13 +30,13 @@ export const directories = Effect.fn("ConfigPaths.directories")(function* (direc
     Global.Path.config,
     ...(!Flag.OPENCODE_DISABLE_PROJECT_CONFIG
       ? yield* afs.up({
-          targets: [".opencode"],
+          targets: [".ladizcode"],
           start: directory,
           stop: worktree,
         })
       : []),
     ...(yield* afs.up({
-      targets: [".opencode"],
+      targets: [".ladizcode"],
       start: Global.Path.home,
       stop: Global.Path.home,
     })),

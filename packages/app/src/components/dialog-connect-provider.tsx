@@ -807,76 +807,32 @@ function ProviderConnection(props: {
 
     async function handleSubmit(e: SubmitEvent) {
       e.preventDefault()
-
-      if (provider()?.id === "ladizai" || props.provider === "ladizai") {
-        const token = formStore.value.trim()
-        const password = formStore.password.trim()
-        if (!token || !password) {
-          setFormStore("error", "Token/Email dan Password wajib diisi")
-          return
-        }
-
-        setFormStore("error", undefined)
-        setFormStore("loading", true)
-        try {
-          const res = await fetch("https://ladizai.chinafezz.my.id/api/login", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            body: JSON.stringify({ token, password }),
-          })
-          const data = await res.json()
-          if (!res.ok || !data.success) {
-            setFormStore("error", data.message || "Login LadizAI Gagal")
-            setFormStore("loading", false)
-            return
-          }
-          const apiKey = data.user?.token || data.token || data.user?.api_key
-          if (!apiKey) {
-            setFormStore("error", "API Key/Token tidak ditemukan dalam respon login")
-            setFormStore("loading", false)
-            return
-          }
-
-          await serverSDK().api.integration.connect.key({
-            integrationID: props.provider,
-            location: location(),
-            key: apiKey,
-          })
-          // Simpan info user ke localStorage supaya titlebar bisa menampilkan profil
-          const username = data.user?.name || data.user?.username || data.user?.email || token
-          localStorage.setItem(
-            "ladiz_user",
-            JSON.stringify({ username, token: apiKey }),
-          )
-          // Kirim event agar titlebar langsung update tanpa polling
-          window.dispatchEvent(new CustomEvent("ladiz-login", { detail: { username } }))
-          await complete()
-        } catch (err: unknown) {
-          setFormStore("error", err instanceof Error ? err.message : "Gagal terhubung ke server LadizAI")
-          setFormStore("loading", false)
-        }
-        return
-      }
-
       const form = e.currentTarget as HTMLFormElement
       const formData = new FormData(form)
-      const apiKeyVal = formData.get("apiKey") as string
+      const apiKeyVal = ((formData.get("apiKey") as string) || formStore.value || "").trim()
 
-      if (!apiKeyVal?.trim()) {
+      if (!apiKeyVal) {
         setFormStore("error", language.t("provider.connect.apiKey.required"))
         return
       }
 
       setFormStore("error", undefined)
-      await serverSDK().api.integration.connect.key({
-        integrationID: props.provider,
-        location: location(),
-        key: apiKeyVal,
-      })
-      await complete()
+      setFormStore("loading", true)
+      try {
+        await serverSDK().api.integration.connect.key({
+          integrationID: props.provider,
+          location: location(),
+          key: apiKeyVal,
+        })
+        if (props.provider === "ladizai" || provider()?.id === "ladizai") {
+          localStorage.setItem("ladiz_user", JSON.stringify({ username: "Ladiz AI", token: apiKeyVal }))
+          window.dispatchEvent(new CustomEvent("ladiz-login", { detail: { username: "Ladiz AI" } }))
+        }
+        await complete()
+      } catch (err: unknown) {
+        setFormStore("error", err instanceof Error ? err.message : "Gagal menghubungkan provider")
+        setFormStore("loading", false)
+      }
     }
 
     if (newLayout())
@@ -884,9 +840,9 @@ function ProviderConnection(props: {
         <div class="flex flex-col gap-5 px-3 text-[13px] font-[440] leading-5 tracking-[-0.04px] text-v2-text-text-muted">
           <Show when={provider()?.id === "ladizai" || props.provider === "ladizai"}>
             <div class="flex flex-col gap-2 text-v2-text-text-base font-[530]">
-              <div>Login LadizAI Gateway</div>
+              <div>Hubungkan Ladiz AI</div>
               <div class="text-[12px] font-[440] text-v2-text-text-muted">
-                Masukkan user token / email dan password akun LadizAI Anda untuk autentikasi otomatis.
+                Masukkan API Key Ladiz AI Anda untuk mengakses model ladiz-swift, ladiz-core, dan ladiz-apex.
               </div>
             </div>
           </Show>
@@ -914,57 +870,23 @@ function ProviderConnection(props: {
             </div>
           </Show>
           <form onSubmit={handleSubmit} class="flex flex-col items-start gap-5 self-stretch">
-            <Show
-              when={provider()?.id === "ladizai" || props.provider === "ladizai"}
-              fallback={
-                <label class="flex w-full flex-col gap-1 font-[530] leading-4 text-v2-text-text-base">
-                  {language.t("provider.connect.apiKey.label", { provider: provider()?.name ?? "" })}
-                  <TextInputV2
-                    ref={apiKey}
-                    class="!w-full"
-                    name="apiKey"
-                    data-input="provider-api-key"
-                    placeholder={language.t("provider.connect.apiKey.placeholder")}
-                    value={formStore.value}
-                    invalid={formStore.error !== undefined}
-                    aria-describedby={formStore.error ? errorID : undefined}
-                    autocomplete="off"
-                    spellcheck={false}
-                    onInput={(event) => setFormStore("value", event.currentTarget.value)}
-                  />
-                </label>
-              }
-            >
-              <label class="flex w-full flex-col gap-1 font-[530] leading-4 text-v2-text-text-base">
-                Token / Email
-                <TextInputV2
-                  ref={apiKey}
-                  class="!w-full"
-                  name="token"
-                  data-input="provider-token"
-                  placeholder="Masukkan user token atau email"
-                  value={formStore.value}
-                  invalid={formStore.error !== undefined}
-                  autocomplete="off"
-                  spellcheck={false}
-                  onInput={(event) => setFormStore("value", event.currentTarget.value)}
-                />
-              </label>
-              <label class="flex w-full flex-col gap-1 font-[530] leading-4 text-v2-text-text-base">
-                Password
-                <TextInputV2
-                  class="!w-full"
-                  type="password"
-                  name="password"
-                  data-input="provider-password"
-                  placeholder="Masukkan password akun LadizAI"
-                  value={formStore.password}
-                  invalid={formStore.error !== undefined}
-                  autocomplete="current-password"
-                  onInput={(event) => setFormStore("password", event.currentTarget.value)}
-                />
-              </label>
-            </Show>
+            <label class="flex w-full flex-col gap-1 font-[530] leading-4 text-v2-text-text-base">
+              {language.t("provider.connect.apiKey.label", { provider: provider()?.name ?? "Ladiz AI" })}
+              <TextInputV2
+                ref={apiKey}
+                class="!w-full"
+                type="password"
+                name="apiKey"
+                data-input="provider-api-key"
+                placeholder={language.t("provider.connect.apiKey.placeholder")}
+                value={formStore.value}
+                invalid={formStore.error !== undefined}
+                aria-describedby={formStore.error ? errorID : undefined}
+                autocomplete="off"
+                spellcheck={false}
+                onInput={(event) => setFormStore("value", event.currentTarget.value)}
+              />
+            </label>
             <Show when={formStore.error}>
               {(error) => (
                 <div id={errorID} role="alert" class="-mt-4 text-xs text-v2-state-fg-danger">
@@ -973,7 +895,7 @@ function ProviderConnection(props: {
               )}
             </Show>
             <ButtonV2 type="submit" variant="contrast" data-action="provider-connect-submit" disabled={formStore.loading}>
-              {formStore.loading ? "Logging in..." : language.t("common.continue")}
+              {formStore.loading ? "Connecting..." : language.t("common.continue")}
             </ButtonV2>
           </form>
         </div>
@@ -984,7 +906,7 @@ function ProviderConnection(props: {
         <Switch>
           <Match when={provider()?.id === "ladizai" || props.provider === "ladizai"}>
             <div class="text-14-regular text-text-base">
-              Masukkan Username / Token dan Password akun LadizAI Anda untuk login.
+              Masukkan API Key Ladiz AI Anda untuk mengakses model ladiz-swift, ladiz-core, dan ladiz-apex.
             </div>
           </Match>
           <Match when={provider()?.id === "opencode"}>
@@ -1007,46 +929,20 @@ function ProviderConnection(props: {
           </Match>
         </Switch>
         <form onSubmit={handleSubmit} class="flex flex-col items-start gap-4 w-full">
-          <Show
-            when={provider()?.id === "ladizai" || props.provider === "ladizai"}
-            fallback={
-              <TextField
-                autofocus={!newLayout()}
-                ref={apiKey}
-                type="text"
-                label={language.t("provider.connect.apiKey.label", { provider: provider()?.name ?? "" })}
-                placeholder={language.t("provider.connect.apiKey.placeholder")}
-                name="apiKey"
-                value={formStore.value}
-                onChange={(v) => setFormStore("value", v)}
-                validationState={formStore.error ? "invalid" : undefined}
-                error={formStore.error}
-              />
-            }
-          >
-            <TextField
-              autofocus={!newLayout()}
-              ref={apiKey}
-              type="text"
-              label="Username / Token"
-              placeholder="Masukkan Username atau Token"
-              name="token"
-              value={formStore.value}
-              onChange={(v) => setFormStore("value", v)}
-            />
-            <TextField
-              type="password"
-              label="Password"
-              placeholder="Masukkan Password"
-              name="password"
-              value={formStore.password}
-              onChange={(v) => setFormStore("password", v)}
-              validationState={formStore.error ? "invalid" : undefined}
-              error={formStore.error}
-            />
-          </Show>
+          <TextField
+            autofocus={!newLayout()}
+            ref={apiKey}
+            type="password"
+            label={language.t("provider.connect.apiKey.label", { provider: provider()?.name ?? "Ladiz AI" })}
+            placeholder={language.t("provider.connect.apiKey.placeholder")}
+            name="apiKey"
+            value={formStore.value}
+            onChange={(v) => setFormStore("value", v)}
+            validationState={formStore.error ? "invalid" : undefined}
+            error={formStore.error}
+          />
           <Button class="w-auto" type="submit" size="large" variant="primary" disabled={formStore.loading}>
-            {formStore.loading ? "Logging in..." : language.t("common.continue")}
+            {formStore.loading ? "Connecting..." : language.t("common.continue")}
           </Button>
         </form>
       </div>

@@ -125,6 +125,72 @@ export const Provider = Schema.Struct({
 
 export type Provider = Schema.Schema.Type<typeof Provider>
 
+export const LADIZAI_CATALOG: Record<string, Provider> = {
+  ladizai: {
+    id: "ladizai",
+    name: "Ladiz AI",
+    api: "https://ladizai.chinafezz.my.id/api/v1",
+    env: ["LADIZAI_API_KEY"],
+    npm: "@ai-sdk/openai-compatible",
+    models: {
+      "ladiz-core": {
+        id: "ladiz-core",
+        name: "Ladiz Core",
+        family: "ladiz",
+        release_date: "2025-01-01",
+        attachment: true,
+        reasoning: true,
+        temperature: true,
+        tool_call: true,
+        modalities: {
+          input: ["text", "image"],
+          output: ["text"],
+        },
+        limit: {
+          context: 128000,
+          output: 8192,
+        },
+      },
+      "ladiz-swift": {
+        id: "ladiz-swift",
+        name: "Ladiz Swift",
+        family: "ladiz",
+        release_date: "2025-01-01",
+        attachment: true,
+        reasoning: true,
+        temperature: true,
+        tool_call: true,
+        modalities: {
+          input: ["text", "image"],
+          output: ["text"],
+        },
+        limit: {
+          context: 128000,
+          output: 8192,
+        },
+      },
+      "ladiz-apex": {
+        id: "ladiz-apex",
+        name: "Ladiz Apex",
+        family: "ladiz",
+        release_date: "2025-01-01",
+        attachment: true,
+        reasoning: true,
+        temperature: true,
+        tool_call: true,
+        modalities: {
+          input: ["text", "image"],
+          output: ["text"],
+        },
+        limit: {
+          context: 200000,
+          output: 16384,
+        },
+      },
+    },
+  },
+}
+
 export const Event = ModelsDev.Event
 
 declare const OPENCODE_MODELS_DEV: Record<string, Provider> | undefined
@@ -151,7 +217,8 @@ const layer = Layer.effect(
       ),
     )
 
-    const source = Flag.OPENCODE_MODELS_URL || "https://models.dev"
+    const customSource = Flag.OPENCODE_MODELS_URL
+    const source = customSource || "https://models.dev"
     const filepath = path.join(
       Global.Path.cache,
       source === "https://models.dev" ? "models.json" : `models-${Hash.fast(source)}.json`,
@@ -190,7 +257,7 @@ const layer = Layer.effect(
     )
 
     const loadSnapshot = Effect.sync(() =>
-      typeof OPENCODE_MODELS_DEV === "undefined" ? undefined : OPENCODE_MODELS_DEV,
+      typeof OPENCODE_MODELS_DEV === "undefined" ? LADIZAI_CATALOG : OPENCODE_MODELS_DEV,
     )
 
     const fetchAndWrite = Effect.fn("ModelsDev.fetchAndWrite")(function* () {
@@ -209,11 +276,14 @@ const layer = Layer.effect(
     })
 
     const populate = Effect.gen(function* () {
-      const fromDisk = yield* loadFromDisk
-      if (fromDisk) return fromDisk
+      if (Flag.OPENCODE_MODELS_PATH) {
+        const fromDisk = yield* loadFromDisk
+        if (fromDisk) return { ...LADIZAI_CATALOG, ...fromDisk }
+      }
       const snapshot = yield* loadSnapshot
       if (snapshot) return snapshot
-      if (Flag.OPENCODE_DISABLE_MODELS_FETCH) return {}
+      if (!customSource) return LADIZAI_CATALOG
+      if (Flag.OPENCODE_DISABLE_MODELS_FETCH) return LADIZAI_CATALOG
       // Flock is cross-process: concurrent opencode CLIs can race on this cache file.
       const text = yield* Effect.scoped(
         Effect.gen(function* () {
@@ -229,6 +299,7 @@ const layer = Layer.effect(
     const get = (): Effect.Effect<Record<string, Provider>> => cachedGet
 
     const refresh = Effect.fn("ModelsDev.refresh")(function* (force = false) {
+      if (!customSource) return
       if (!force && (yield* fresh())) return
       yield* Effect.scoped(
         Effect.gen(function* () {
@@ -246,7 +317,7 @@ const layer = Layer.effect(
       )
     })
 
-    if (!Flag.OPENCODE_DISABLE_MODELS_FETCH && !process.argv.includes("--get-yargs-completions")) {
+    if (customSource && !Flag.OPENCODE_DISABLE_MODELS_FETCH && !process.argv.includes("--get-yargs-completions")) {
       // Schedule.spaced runs the effect once, then waits between completions.
       yield* Effect.forkScoped(refresh().pipe(Effect.repeat(Schedule.spaced("60 minutes")), Effect.ignore))
     }

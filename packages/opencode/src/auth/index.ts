@@ -62,7 +62,13 @@ const layer = Layer.effect(
         } catch (err) {}
       }
 
-      const data = (yield* fsys.readJson(file).pipe(Effect.orElseSucceed(() => ({})))) as Record<string, unknown>
+      let data = (yield* fsys.readJson(file).pipe(Effect.orElseSucceed(() => undefined))) as
+        | Record<string, unknown>
+        | undefined
+      if (!data) {
+        const legacyFile = path.join(path.dirname(Global.Path.data), "opencode", "auth.json")
+        data = (yield* fsys.readJson(legacyFile).pipe(Effect.orElseSucceed(() => ({})))) as Record<string, unknown>
+      }
       return Record.filterMap(data, (value) => Result.fromOption(decode(value), () => undefined))
     })
 
