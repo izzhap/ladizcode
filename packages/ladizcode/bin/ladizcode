@@ -43,13 +43,15 @@ function run(target) {
   })
 }
 
-const envPath = process.env.OPENCODE_BIN_PATH
+const envPath = process.env.LADIZCODE_BIN_PATH || process.env.OPENCODE_BIN_PATH
 
 const scriptPath = fs.realpathSync(__filename)
 const scriptDir = path.dirname(scriptPath)
 
 //
-const cached = path.join(scriptDir, ".opencode")
+const cached = fs.existsSync(path.join(scriptDir, ".ladizcode"))
+  ? path.join(scriptDir, ".ladizcode")
+  : path.join(scriptDir, ".opencode")
 
 const platformMap = {
   darwin: "darwin",
@@ -71,7 +73,8 @@ if (!arch) {
   arch = os.arch()
 }
 const base = "opencode-" + platform + "-" + arch
-const binary = platform === "windows" ? "opencode.exe" : "opencode"
+const ladizBase = "ladizcode-" + platform + "-" + arch
+const binaryNames = platform === "windows" ? ["ladizcode.exe", "opencode.exe"] : ["ladizcode", "opencode"]
 
 function supportsAvx2() {
   if (arch !== "x64") return false
@@ -127,45 +130,53 @@ const names = (() => {
   const avx2 = supportsAvx2()
   const baseline = arch === "x64" && !avx2
 
-  if (platform === "linux") {
-    const musl = (() => {
-      try {
-        if (fs.existsSync("/etc/alpine-release")) return true
-      } catch {
-        // ignore
-      }
+  const prefixes = [ladizBase, base]
+  const list = []
 
-      try {
-        const result = childProcess.spawnSync("ldd", ["--version"], { encoding: "utf8" })
-        const text = ((result.stdout || "") + (result.stderr || "")).toLowerCase()
-        if (text.includes("musl")) return true
-      } catch {
-        // ignore
-      }
+  for (const b of prefixes) {
+    if (platform === "linux") {
+      const musl = (() => {
+        try {
+          if (fs.existsSync("/etc/alpine-release")) return true
+        } catch {
+          // ignore
+        }
 
-      return false
-    })()
+        try {
+          const result = childProcess.spawnSync("ldd", ["--version"], { encoding: "utf8" })
+          const text = ((result.stdout || "") + (result.stderr || "")).toLowerCase()
+          if (text.includes("musl")) return true
+        } catch {
+          // ignore
+        }
 
-    if (musl) {
-      if (arch === "x64") {
-        if (baseline) return [`${base}-baseline-musl`, `${base}-musl`, `${base}-baseline`, base]
-        return [`${base}-musl`, `${base}-baseline-musl`, base, `${base}-baseline`]
+        return false
+      })()
+
+      if (musl) {
+        if (arch === "x64") {
+          if (baseline) list.push(`${b}-baseline-musl`, `${b}-musl`, `${b}-baseline`, b)
+          else list.push(`${b}-musl`, `${b}-baseline-musl`, b, `${b}-baseline`)
+        } else {
+          list.push(`${b}-musl`, b)
+        }
+      } else {
+        if (arch === "x64") {
+          if (baseline) list.push(`${b}-baseline`, b, `${b}-baseline-musl`, `${b}-musl`)
+          else list.push(b, `${b}-baseline`, `${b}-musl`, `${b}-baseline-musl`)
+        } else {
+          list.push(b, `${b}-musl`)
+        }
       }
-      return [`${base}-musl`, base]
+    } else if (arch === "x64") {
+      if (baseline) list.push(`${b}-baseline`, b)
+      else list.push(b, `${b}-baseline`)
+    } else {
+      list.push(b)
     }
-
-    if (arch === "x64") {
-      if (baseline) return [`${base}-baseline`, base, `${base}-baseline-musl`, `${base}-musl`]
-      return [base, `${base}-baseline`, `${base}-musl`, `${base}-baseline-musl`]
-    }
-    return [base, `${base}-musl`]
   }
 
-  if (arch === "x64") {
-    if (baseline) return [`${base}-baseline`, base]
-    return [base, `${base}-baseline`]
-  }
-  return [base]
+  return list
 })()
 
 function findBinary(startDir) {
@@ -174,8 +185,10 @@ function findBinary(startDir) {
     const modules = path.join(current, "node_modules")
     if (fs.existsSync(modules)) {
       for (const name of names) {
-        const candidate = path.join(modules, name, "bin", binary)
-        if (fs.existsSync(candidate)) return candidate
+        for (const binary of binaryNames) {
+          const candidate = path.join(modules, name, "bin", binary)
+          if (fs.existsSync(candidate)) return candidate
+        }
       }
     }
     const parent = path.dirname(current)
@@ -189,7 +202,7 @@ function findBinary(startDir) {
 const resolved = envPath || (fs.existsSync(cached) ? cached : findBinary(scriptDir))
 if (!resolved) {
   console.error(
-    "It seems that your package manager failed to install the right version of the opencode CLI for your platform. You can try manually installing " +
+    "It seems that your package manager failed to install the right version of the ladizcode CLI for your platform. You can try manually installing " +
       names.map((n) => `\"${n}\"`).join(" or ") +
       " package",
   )

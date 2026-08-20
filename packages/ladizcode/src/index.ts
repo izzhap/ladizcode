@@ -65,16 +65,25 @@ const cli = yargs(args)
     type: "boolean",
   })
   .middleware(async (opts) => {
-    if (opts.printLogs) process.env.OPENCODE_PRINT_LOGS = "1"
-    if (opts.logLevel) process.env.OPENCODE_LOG_LEVEL = opts.logLevel
+    if (opts.printLogs) {
+      process.env.LADIZCODE_PRINT_LOGS = "1"
+      process.env.OPENCODE_PRINT_LOGS = "1"
+    }
+    if (opts.logLevel) {
+      process.env.LADIZCODE_LOG_LEVEL = opts.logLevel
+      process.env.OPENCODE_LOG_LEVEL = opts.logLevel
+    }
     if (opts.pure) {
+      process.env.LADIZCODE_PURE = "1"
       process.env.OPENCODE_PURE = "1"
     }
 
     Heap.start()
 
     process.env.AGENT = "1"
+    process.env.LADIZCODE = "1"
     process.env.OPENCODE = "1"
+    process.env.LADIZCODE_PID = String(process.pid)
     process.env.OPENCODE_PID = String(process.pid)
   })
   .usage("")

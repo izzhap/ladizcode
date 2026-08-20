@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "version": "1.18.9",
-  "name": "opencode",
+  "name": "ladizcode",
   "type": "module",
   "license": "MIT",
   "private": true,
@@ -12,12 +12,13 @@
     "bench:test": "bun run script/bench-test-suite.ts",
     "profile:test": "bun run script/profile-test-files.ts",
     "build": "bun run script/build.ts",
+    "publish": "bun run script/publish.ts",
     "dev": "bun run --conditions=browser ./src/index.ts",
     "dev:temporary": "bun run --conditions=browser ./src/temporary.ts"
   },
   "bin": {
-    "ladizcode": "./bin/opencode",
-    "opencode": "./bin/opencode"
+    "ladizcode": "./bin/ladizcode",
+    "opencode": "./bin/ladizcode"
   },
   "exports": {
     "./*": "./src/*.ts"
