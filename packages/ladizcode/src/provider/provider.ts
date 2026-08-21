@@ -1973,7 +1973,13 @@ const layer = Layer.effect(
       const configured = Object.keys(cfg.provider ?? {})
       const provider = Object.values(s.providers).find((p) => configured.length === 0 || configured.includes(p.id))
       if (!provider) return yield* new NoProvidersError()
-      const [model] = sort(Object.values(provider.models))
+      const sortedModels = sortBy(
+        Object.values(provider.models),
+        (model) => model.cost?.input !== 0,
+        (model) => (model.cost?.input ?? 999) + (model.cost?.output ?? 999),
+        [(model) => model.release_date, "desc"],
+      )
+      const model = sortedModels[0]
       if (!model) return yield* new NoModelsError({ providerID: provider.id })
       return {
         providerID: provider.id,

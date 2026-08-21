@@ -70,7 +70,15 @@ const ModelList: Component<{
       items={models}
       current={model.current()}
       filterKeys={["provider.name", "name", "id"]}
-      sortBy={(a, b) => a.name.localeCompare(b.name)}
+      sortBy={(a, b) => {
+        const freeA = isFree(a.provider.id, a.cost) ? 0 : 1
+        const freeB = isFree(b.provider.id, b.cost) ? 0 : 1
+        if (freeA !== freeB) return freeA - freeB
+        const costA = (a.cost?.input ?? 999) + (a.cost?.output ?? 999)
+        const costB = (b.cost?.input ?? 999) + (b.cost?.output ?? 999)
+        if (costA !== costB) return costA - costB
+        return a.name.localeCompare(b.name)
+      }}
       groupBy={(x) => x.provider.name}
       sortGroupsBy={(a, b) => {
         const aProvider = a.items[0].provider.id

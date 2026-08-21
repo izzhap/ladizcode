@@ -8,11 +8,9 @@ const distDir = path.join(fileURLToPath(new URL("..", import.meta.url)), "dist")
 const outDir = path.join(distDir, "downloads")
 
 const webPublicDownloads = path.join(rootDir, "packages", "web", "public", "downloads")
-const appPublicDownloads = path.join(rootDir, "packages", "app", "public", "downloads")
 
 await $`mkdir -p ${outDir}`
 await $`mkdir -p ${webPublicDownloads}`
-await $`mkdir -p ${appPublicDownloads}`
 
 const entries = await Array.fromAsync(new Bun.Glob("*").scan({ cwd: distDir, onlyFiles: false }))
 
@@ -23,14 +21,13 @@ for (const name of entries) {
   
   console.log(`Packing ${name} -> ${name}.zip`)
   if (process.platform === "win32") {
-    await $`powershell -Command "Compress-Archive -Path '${binDir}\\*' -DestinationPath '${zipFile}' -Force"`
+    await $`powershell -Command "Compress-Archive -Path '${binDir}\\ladizcode*' -DestinationPath '${zipFile}' -Force"`
   } else {
-    await $`zip -r ${zipFile} .`.cwd(binDir)
+    await $`zip -r ${zipFile} ladizcode*`.cwd(binDir)
   }
 
-  // Copy to public/downloads for web packages
+  // Copy to public/downloads for web package
   await Bun.write(path.join(webPublicDownloads, `${name}.zip`), Bun.file(zipFile))
-  await Bun.write(path.join(appPublicDownloads, `${name}.zip`), Bun.file(zipFile))
 }
 
 console.log(`\n==================================================`)

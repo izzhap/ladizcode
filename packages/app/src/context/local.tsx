@@ -171,9 +171,17 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           if (validModel(model)) return model
         }
 
-        const first = Object.values(provider.models)[0]
-        if (!first) continue
-        const model = { providerID: provider.id, modelID: first.id }
+        const sortedModels = Object.values(provider.models).slice().sort((a, b) => {
+          const freeA = a.cost?.input === 0 ? 0 : 1
+          const freeB = b.cost?.input === 0 ? 0 : 1
+          if (freeA !== freeB) return freeA - freeB
+          const costA = (a.cost?.input ?? 999) + (a.cost?.output ?? 999)
+          const costB = (b.cost?.input ?? 999) + (b.cost?.output ?? 999)
+          return costA - costB
+        })
+        const cheapest = sortedModels[0]
+        if (!cheapest) continue
+        const model = { providerID: provider.id, modelID: cheapest.id }
         if (validModel(model)) return model
       }
     }

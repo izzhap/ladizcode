@@ -224,8 +224,16 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         const provider = sync.data.provider[0]
         if (!provider) return undefined
         const defaultModel = sync.data.provider_default[provider.id]
-        const firstModel = Object.values(provider.models)[0]
-        const model = defaultModel ?? firstModel?.id
+        const sortedModels = Object.values(provider.models).slice().sort((a, b) => {
+          const freeA = a.cost?.input === 0 ? 0 : 1
+          const freeB = b.cost?.input === 0 ? 0 : 1
+          if (freeA !== freeB) return freeA - freeB
+          const costA = (a.cost?.input ?? 999) + (a.cost?.output ?? 999)
+          const costB = (b.cost?.input ?? 999) + (b.cost?.output ?? 999)
+          return costA - costB
+        })
+        const cheapestModel = sortedModels[0]
+        const model = defaultModel ?? cheapestModel?.id
         if (!model) return undefined
         return {
           providerID: provider.id,

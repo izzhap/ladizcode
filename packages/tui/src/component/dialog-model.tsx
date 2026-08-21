@@ -74,6 +74,7 @@ export function DialogModel(props: { providerID?: string }) {
             value: { providerID: provider.id, modelID: model },
             title: info.name ?? model,
             releaseDate: info.release_date,
+            cost: info.cost,
             description: favorites.some((item) => item.providerID === provider.id && item.modelID === model)
               ? "(Favorite)"
               : undefined,
@@ -183,14 +184,14 @@ export function DialogModel(props: { providerID?: string }) {
   )
 }
 
-export function sortModelOptions<T extends { footer?: string; releaseDate: string | number; title: string }>(
-  options: T[],
-  newestFirst: boolean,
-) {
+export function sortModelOptions<
+  T extends { footer?: string; releaseDate: string | number; title: string; cost?: { input?: number; output?: number } },
+>(options: T[], newestFirst: boolean) {
   if (newestFirst) return sortBy(options, [(option) => option.releaseDate, "desc"], (option) => option.title)
   return sortBy(
     options,
     (option) => option.footer !== "Free",
+    (option) => (option.cost?.input ?? 999) + (option.cost?.output ?? 999),
     [(option) => option.releaseDate, "desc"],
     (option) => option.title,
   )

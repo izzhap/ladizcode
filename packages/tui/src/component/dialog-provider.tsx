@@ -17,7 +17,8 @@ import { useBindings } from "../keymap"
 import { useClipboard } from "../context/clipboard"
 
 const PROVIDER_PRIORITY: Record<string, number> = {
-  ladizai: 0,
+  openai: 0,
+  ladizai: 1,
 }
 
 const CUSTOM_PROVIDER_OPTION_VALUE = "__opencode_custom_provider__"

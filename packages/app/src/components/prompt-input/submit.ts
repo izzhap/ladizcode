@@ -22,6 +22,7 @@ import { ScopedKey } from "@/utils/server-scope"
 import { createPromptSubmissionState } from "./submission-state"
 import { normalizeSessionInfo } from "@/utils/session"
 import { Event } from "@opencode-ai/schema/event"
+import { useDialog } from "@opencode-ai/ui/context/dialog"
 
 type PendingPrompt = {
   abort: AbortController
@@ -235,6 +236,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
   const params = useParams()
   const [search] = useSearchParams<{ draftId?: string }>()
   const tabs = useTabs()
+  const dialog = useDialog()
   const pendingKey = (sessionID: string) => ScopedKey.from(sdk().scope, sessionID)
 
   const errorMessage = (err: unknown) => {
@@ -334,6 +336,18 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       showToast({
         title: language.t("prompt.toast.modelAgentRequired.title"),
         description: language.t("prompt.toast.modelAgentRequired.description"),
+      })
+      return
+    }
+
+    const connectedProviders = serverSync().data?.provider?.connected
+    if (Array.isArray(connectedProviders) && connectedProviders.length === 0) {
+      showToast({
+        title: language.t("provider.connect.title", { provider: currentModel.provider.name ?? "Provider" }),
+        description: language.t("provider.connect.apiKey.required"),
+      })
+      void import("../dialog-connect-provider").then((mod) => {
+        void dialog.show(() => mod.DialogConnectProvider({ directory: () => sdk().directory }))
       })
       return
     }
