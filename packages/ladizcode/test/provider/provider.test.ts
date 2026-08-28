@@ -115,7 +115,7 @@ it.instance("provider loaded from env variable", () =>
     const providers = yield* list
     expect(providers[ProviderV2.ID.ladizai]).toBeDefined()
     expect(providers[ProviderV2.ID.ladizai].source).toBe("env")
-    expect(providers[ProviderV2.ID.ladizai].options.baseURL).toBe("https://ladizai.chinafezz.my.id/api/v1")
+    expect(providers[ProviderV2.ID.ladizai].options.baseURL).toBe("https://ladiz.web.id/api/v1")
   }),
 )
 

@@ -5,7 +5,7 @@ import { CliError, effectCmd, fail } from "../effect-cmd"
 import * as Prompt from "../effect/prompt"
 import { UI } from "../ui"
 
-export const LADIZAI_BASE_URL = "https://ladizai.chinafezz.my.id/api/v1"
+export const LADIZAI_BASE_URL = "https://ladiz.web.id/api/v1"
 
 const promptValue = <Value>(value: Option.Option<Value>) => {
   if (Option.isNone(value)) return Effect.die(new UI.CancelledError())

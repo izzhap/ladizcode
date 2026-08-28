@@ -74,7 +74,7 @@ if (!arch) {
 }
 const base = "opencode-" + platform + "-" + arch
 const ladizBase = "ladizcode-" + platform + "-" + arch
-const binaryNames = platform === "windows" ? ["ladizcode.exe", "opencode.exe"] : ["ladizcode", "opencode"]
+const binaryNames = platform === "windows" ? ["ladizcode.exe"] : ["ladizcode"]
 
 function supportsAvx2() {
   if (arch !== "x64") return false

@@ -371,7 +371,7 @@ function ApiMethod(props: ApiMethodProps) {
                 Enter your Ladiz AI API key to access ladiz-swift, ladiz-core, and ladiz-apex models.
               </text>
               <text fg={theme.text}>
-                Base URL: <span style={{ fg: theme.primary }}>https://ladizai.chinafezz.my.id/api/v1</span>
+                Base URL: <span style={{ fg: theme.primary }}>https://ladiz.web.id/api/v1</span>
               </text>
             </box>
           ),

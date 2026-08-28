@@ -548,7 +548,6 @@
       "version": "1.18.9",
       "bin": {
         "ladizcode": "./bin/ladizcode",
-        "opencode": "./bin/ladizcode",
       },
       "dependencies": {
         "@actions/core": "1.11.1",

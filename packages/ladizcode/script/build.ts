@@ -201,9 +201,6 @@ for (const item of targets) {
     },
   })
 
-  // Create opencode alias
-  const binExt = item.os === "win32" ? ".exe" : ""
-  await $`cp dist/${name}/bin/ladizcode${binExt} dist/${name}/bin/opencode${binExt}`.nothrow()
 
   // Smoke test: only run if binary is for current platform
   if (item.os === process.platform && item.arch === process.arch && !item.abi) {

@@ -457,7 +457,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
       Effect.succeed({
         autoload: false,
         options: {
-          baseURL: "https://ladizai.chinafezz.my.id/api/v1",
+          baseURL: "https://ladiz.web.id/api/v1",
         },
       }),
     llmgateway: () =>
