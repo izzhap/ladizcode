@@ -82,6 +82,28 @@ describe("HttpApi CORS", () => {
     }),
   )
 
+  it.live("adds CORS headers for ladizai.com webapp origin", () =>
+    Effect.gen(function* () {
+      const handler = HttpRouter.toWebHandler(
+        HttpApiApp.createRoutes().pipe(
+          Layer.provide(ConfigProvider.layer(ConfigProvider.fromUnknown({ OPENCODE_SERVER_PASSWORD: "secret" }))),
+        ),
+        { disableLogger: true },
+      ).handler
+      const response = yield* Effect.promise(() =>
+        handler(
+          new Request(new URL("/global/config", "http://localhost"), {
+            headers: { origin: "https://ladizai.com" },
+          }),
+          HttpApiApp.context,
+        ),
+      )
+
+      expect(response.status).toBe(401)
+      expect(response.headers.get("access-control-allow-origin")).toBe("https://ladizai.com")
+    }),
+  )
+
   it.live("uses custom CORS origins passed to the server", () =>
     Effect.gen(function* () {
       const listener = yield* Effect.acquireRelease(

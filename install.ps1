@@ -6,7 +6,7 @@ $ErrorActionPreference = 'Stop'
 
 # Application & Hosting Configuration
 $AppName = "ladizcode"
-$BaseDownloadUrl = "https://ladizai.chinafezz.my.id/downloads"
+$BaseDownloadUrl = "https://ladizai.com/downloads"
 $InstallDir = "$env:LOCALAPPDATA\$AppName\bin"
 
 Write-Host "Installing $AppName for Windows..." -ForegroundColor Cyan

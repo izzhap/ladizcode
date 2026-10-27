@@ -2,7 +2,7 @@
 set -euo pipefail
 
 APP="ladizcode"
-BASE_URL="https://ladizai.chinafezz.my.id/downloads"
+BASE_URL="https://ladizai.com/downloads"
 INSTALL_DIR="$HOME/.ladizcode/bin"
 
 echo "Installing $APP for $(uname -s)..."

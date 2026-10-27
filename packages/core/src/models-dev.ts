@@ -129,7 +129,7 @@ export const LADIZAI_CATALOG: Record<string, Provider> = {
   ladizai: {
     id: "ladizai",
     name: "Ladiz AI",
-    api: "https://ladiz.web.id/api/v1",
+    api: "https://api.ladizai.com/v1",
     env: ["LADIZAI_API_KEY"],
     npm: "@ai-sdk/openai-compatible",
     models: {

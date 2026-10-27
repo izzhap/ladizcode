@@ -146,8 +146,8 @@ const layer: Layer.Layer<Service, never, HttpClient.HttpClient | AppProcess.Serv
       function* (target: string) {
         const isWindows = process.platform === "win32"
         const scriptUrl = isWindows
-          ? "https://ladizai.chinafezz.my.id/downloads/install.ps1"
-          : "https://ladizai.chinafezz.my.id/downloads/install.sh"
+          ? "https://ladizai.com/downloads/install.ps1"
+          : "https://ladizai.com/downloads/install.sh"
         const response = yield* httpOk.execute(HttpClientRequest.get(scriptUrl))
         const body = yield* response.text
         if (isWindows) {
@@ -268,7 +268,7 @@ const layer: Layer.Layer<Service, never, HttpClient.HttpClient | AppProcess.Serv
 
         const response = yield* httpOk
           .execute(
-            HttpClientRequest.get("https://ladizai.chinafezz.my.id/downloads/version.json").pipe(
+            HttpClientRequest.get("https://ladizai.com/downloads/version.json").pipe(
               HttpClientRequest.acceptJson,
             ),
           )
